@@ -1,0 +1,133 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<title>分页测试</title>
+</head>
+<script type="text/javascript" src="js/jquery.min.js"></script>
+<style type="text/css">
+	.page{ width:50px; height:20px; border:1px solid #ccc; cursor:pointer}
+	.disable{ background-color:#999 }
+	.floatL{ float:left}
+</style>
+<body style="padding:50px">
+
+<div style=" display:inline-block">    
+    <div class="floatL">每页条数<input id="pagesize" type="text" value="8" /></div>
+    <select class="floatL" id="pages"></select>
+    <div class="floatL">当前第<label id="current"></label>页</div>
+    <div id="prev" class="page floatL">上一页</div><div id="next" class="page floatL">下一页</div>
+</div>
+
+	<table id="table1"></table>
+<script language="javascript">
+var data=[];
+function ajaxData(url, callback){
+	for(var i=0; i<100; i++){
+		data.push({id:i+1, name:"Hello", age:parseInt(Math.random()*30 + 15)});
+	}
+	callback(data);
+}
+$(function(){
+	ajaxData("", function(dataset){
+		//console.log(dt);
+		var page = new Paging(dataset, $("#pagesize").val());
+		function loadPage(dt, current, control){
+			//数据输出模拟：
+			var tbHtml = "";
+			dt.forEach(function(d){//数据每行是一个字典，Object
+				tbHtml += "<tr>";
+				for(var k in d)tbHtml += "<td>" + d[k] + "</td>";
+				tbHtml += "</tr>";
+			});
+			$("#table1").html(tbHtml);
+			
+			//当前页显示
+			$("#current").text(current);
+			
+			//UI控制
+			$("#prev").removeClass("disable");
+			$("#next").removeClass("disable");
+			if(!control['prev'])$("#prev").addClass('disable');
+			if(!control['next'])$("#next").addClass('disable');
+		}
+		//首次加载
+		function loadFirst(){
+			page.Init(function(dt, current, control){
+				//加载页码列表
+				$("#pages").html("");
+				for(var i=1; i<=page.maxPage; i++)
+					$("#pages").append("<option value='"+i+"'>"+i+"</option>");
+				loadPage(dt, current, control);
+			});
+		}
+		
+		loadFirst();
+		
+		//点击事件-上一页
+		$("#prev").click(function(){
+			if($("#prev").hasClass('disable'))return;
+			page.prev(function(dt, current, control){ loadPage(dt, current, control); });
+		});
+		//点击事件-下一页
+		$("#next").click(function(){
+			if($("#next").hasClass('disable'))return;
+			page.next(function(dt, current, control){ loadPage(dt, current, control); });
+			
+		});
+		//选择页数
+		$("#pages").change(function(){
+			page.getPageData($("#pages").val(), function(dt, current, control){
+				loadPage(dt, current, control);
+			});
+		});
+		//调整页面条数
+		$("#pagesize").change(function(){
+			page = new Paging(dataset, $("#pagesize").val());
+			loadFirst();
+		});
+	});
+
+});	
+
+	/*
+		类库：分页逻辑实现
+	*/
+	function Paging(_data, _pageSize, _current){
+		this.data = data;
+		this.pageSize = _pageSize || 10;
+		this.current = _current || 1;
+		
+		this.maxPage = parseInt(this.data.length / this.pageSize) + ((this.data.length % this.pageSize) == 0 ? 0 : 1);
+		
+		this.Init = function(callback){ //首次加载
+			this.getPageData(1, callback);
+		}	
+		//callback() data, current page number, control Info
+		this.getPageData = function(pageNumber, callback){
+			var control = {prev:true, next:true}; //控制信息
+			if(pageNumber < 1 || pageNumber > this.maxPage)return null; //合法性测试
+			this.current = pageNumber;
+			var begin = this.pageSize * (this.current - 1);
+				end = this.pageSize * this.current;
+			if(end > this.data.length)end = this.data.length;	//最后一页
+			if(this.current == 1)control['prev'] = false;
+			if(this.current == this.maxPage)control['next'] = false;
+			callback(this.data.slice(begin, end), this.current, control);
+			//return this.data.slice(begin, end);
+		}
+		this.prev = function(callback){
+			if(this.current > 1)this.getPageData(--this.current, callback);
+		}
+		this.next = function(callback){
+			if(this.current < this.maxPage)this.getPageData(++this.current, callback);
+		}
+	}
+
+
+
+
+
+</script>
+</body>
+</html>
